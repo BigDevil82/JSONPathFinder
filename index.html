@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="JSON Path Finder" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JSON Path Finder</title>
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico" />
+    <link
+      href="https://fonts.googleapis.com/css?family=Roboto+Mono|Roboto:300,400"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/normalize/7.0.0/normalize.min.css"
+    />
+    <link rel="stylesheet" href="css/style.20210306.css" />
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script
+      type="text/javascript"
+      src="https://cdn.rawgit.com/Inndy/vue-clipboard2/master/dist/vue-clipboard.min.js"
+    ></script>
+    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="jsonpath-0.8.0.js" type="text/javascript"></script>
+    <script src="https://cdn.rawgit.com/vkiryukhin/vkBeautify/master/vkbeautify.js"></script>
+  </head>
+
+<!--傻傻的asfaasdsad-->
+  <body>
+    <!-- main vue app -->
+    <div id="app">
+      <!-- title bar -->
+      <div id="title-bar">
+        <div>
+          <h2 class="title-bar-item">JSON Path Finder & Evaluator</h2>
+        </div>
+        <div class="title-bar-item">
+          <a
+            href="https://github.com/joebeachjoebeach/json-path-finder"
+            target="_blank"
+            ><img
+              src="images/github-light.png"
+              alt="find this project on github"
+          /></a>
+        </div>
+      </div>
+
+      <!-- text editor holder -->
+      <div id="editor-box" class="big-box">
+        <!-- editor button -->
+        <div id="editor-button-row">
+          <button class="editor-button-row-button" @click="loadSample">
+            Sample
+          </button>
+          <button class="editor-button-row-button" @click="beautify">
+            Beautify
+          </button>
+          <button class="editor-button-row-button" @click="minify">
+            Minify
+          </button>
+        </div>
+        <!-- ace editor -->
+        <div id="editor"></div>
+      </div>
+
+      <!-- json reader holder -->
+      <div id="reader-box" class="big-box">
+        <!-- path bar -->
+        <div id="reader-path-bar-holder">
+          <div id="reader-path-bar">
+            <div id="reader-path-bar-label" class="reader-path-bar-item">
+              <label> Path: </label>
+            </div>
+            <input
+              id="reader-path-bar-input"
+              class="reader-path-bar-item"
+              type="text"
+              name="path to data"
+              v-model="path"
+            />
+            <button
+              id="reader-path-bar-copy"
+              v-clipboard:copy="path"
+              @click="copied"
+            >
+              {{ copy }}
+            </button>
+          </div>
+        </div>
+        <!-- reader display -->
+        <div id="json-reader">
+          <div class="btn-wrapper">
+            <button
+              id="reset-button"
+              title="返回原始JSON"
+              class="invisiableBtn"
+              @click="reset"
+            >
+              <img
+                src="https://img.icons8.com/android/24/000000/recurring-appointment.png"
+              />
+            </button>
+            <button
+              id="expand-button"
+              class="invisiableBtn"
+              title="点击开启一键展开折叠"
+              @click="expand"
+            >
+              <img
+                src="https://img.icons8.com/ios-glyphs/24/000000/expand-arrow--v1.png"
+              />
+            </button>
+          </div>
+
+          <!-- error display -->
+          <div id="json-reader-error" v-if="error">
+            <div class="json-reader-error-part">{{ errorIntro }}</div>
+            <div class="json-reader-error-part">
+              Error message:
+              <span id="json-reader-error-message">{{ errorMessage }}</span>
+            </div>
+          </div>
+          <!-- json tree display -->
+          <div v-else="">
+            <div :class="{'json-tree':!isResult}">
+              <!-- show result -->
+              <div v-for="(item, key) in result">
+                <json-tree
+                  :item="item"
+                  :key-name="key"
+                  :root="true"
+                  :original-json="result"
+                  :parent-json="result"
+                  :expand-all="true"
+                >
+                </json-tree>
+              </div>
+            </div>
+            <div :class="{'json-tree':isResult}">
+              <!-- show original json -->
+              <div v-for="(item, key) in json">
+                <json-tree
+                  :item="item"
+                  :key-name="key"
+                  :root="true"
+                  :original-json="json"
+                  :parent-json="json"
+                  :expand-all="expandAll"
+                  @update="updatePath"
+                >
+                </json-tree>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- footer -->
+    <footer class="row primary">
+      <span id="footer-credit"
+        >Created by <a href="http://joebea.ch/">Joe Beach</a> And Tranported by
+        <a href="https://getquicker.net/User/Actions/109090-BIG_DEVIL"
+          >BigDevil</a
+        >
+      </span>
+    </footer>
+
+    <!-- json tree vue template | displays an object as a hierarchical tree -->
+    <script type="x-template" id="json-tree">
+      <div :class="{ 'json-reader-tree-subtree':!root, 'json-reader-tree-root':root}" class="json-reader-tree">
+          <div class="json-reader-tree-property" :class="{ 'json-reader-tree-property-selected': selected }" @click="clicked">
+              <div v-if="isArrOrObj && (isOpen || expand)" class="json-reader-tree-property-arrow">&#9660; </div>
+              <div v-if="isArrOrObj && !isOpen && !expand" class="json-reader-tree-property-arrow">&#9654; </div>
+              <div>{{ keyName }}:</div>
+              <div v-if="!isArrOrObj" class="json-reader-tree-property-value">{{ item }}</div>
+          </div>
+          <div v-show="isOpen || expand" v-if="isArrOrObj">
+            <div v-for="(childItem, key) in item">
+                <json-tree :item="childItem" :key-name="key" :root="false"
+                 :original-json="originalJson" :parent-json ="item" :expand-all="expandAll" @update="sendUpdate">
+                </json-tree>
+            </div>
+          </div>
+       </div>
+    </script>
+
+    <script>
+      //Vue.config.devtools = true;
+      // create hub so components can communicate
+      var eventHub = new Vue();
+
+      // tree component for objects/arrays within the JSON
+      Vue.component("json-tree", {
+        template: "#json-tree",
+        props: [
+          "item",
+          "keyName",
+          "root",
+          "originalJson",
+          "parentJson",
+          "expandAll",
+        ],
+        created: function () {
+          eventHub.$on("other-clicked", this.deselect);
+        },
+        beforeDestroy: function () {
+          eventHub.$off("other-clicked", this.deselect);
+        },
+        data: function () {
+          return {
+            // path to be displayed in the path bar
+            path: "",
+            // allow us to mutate open/closed state of subtrees
+            isOpen: false,
+            selected: false,
+            justClicked: false,
+            expand: this.expandAll,
+          };
+        },
+        computed: {
+          isArrOrObj: function () {
+            return this.item instanceof Object;
+          },
+        },
+
+        methods: {
+          clicked: function () {
+            if (this.isArrOrObj && !app.isResult) this.isOpen = !this.isOpen;
+            if (app.isResult) this.expand = !this.expand;
+            this.selected = true;
+            eventHub.$emit("other-clicked");
+            this.justClicked = true;
+            //console.log(this.keyName);
+
+            if (!app.isResult) {
+              this.path = this.searchObject(
+                this.originalJson,
+                this.parentJson,
+                this.keyName
+              );
+              this.$emit("update", this.path);
+            }
+          },
+
+          searchObject: function (oldObj, newObj, key, path) {
+            path = path || "$";
+            var output = "";
+            var newPath;
+            for (var item in oldObj) {
+              // compare the keys and the objects themselves to find a match
+              if (item.toString() === key.toString() && oldObj === newObj) {
+                // put array indices in brackets
+                if (Array.isArray(newObj)) return path + "[" + item + "]";
+                // put strings with spaces, periods, or brackets in brackets
+                else if (/[^A-Za-z0-9_$]/.test(item))
+                  return path + "['" + item + "']";
+                // use dot notation for all else
+                else return path + "." + item;
+              } else if (typeof oldObj[item] === "object") {
+                if (Array.isArray(oldObj)) newPath = path + "[" + item + "]";
+                else if (/[^A-Za-z0-9_$]/.test(item))
+                  newPath = path + "['" + item + "']";
+                else newPath = path + "." + item;
+                output =
+                  this.searchObject(oldObj[item], newObj, key, newPath) ||
+                  output;
+              }
+            }
+            return output;
+          },
+          // sends this message up the chain
+          sendUpdate: function (path) {
+            // if (path) console.log(path);
+            // else console.log("no ");
+            this.$emit("update", path);
+          },
+          deselect: function () {
+            if (this.justClicked) {
+              this.selected = false;
+              this.justClicked = false;
+            }
+          },
+        },
+      });
+
+      // main vue app
+      var app = new Vue({
+        el: "#app",
+        data: {
+          editor: "",
+          // this holds the JSON to be read; initialize with instructions
+          json: {
+            instructions: [
+              "Enter your JSON in the editor.",
+              "Select an item to view its path.",
+              "Replace 'x' with the name of your variable.",
+            ],
+          },
+          // sample JSON
+          sample: {
+            "Indo-European": {
+              "Indo-Iranian": {
+                Iranian: [
+                  "Persian",
+                  "Avestan",
+                  "Sogdian",
+                  "Baluchi",
+                  "Kurdish",
+                  "Pashto",
+                ],
+                Indic: [
+                  "Assamese",
+                  "Bengali",
+                  "Gujarati",
+                  "Hindi",
+                  "Marathi",
+                  "Punjabi",
+                  "Romany",
+                  "Sindhi",
+                  "Singhalese",
+                  "Urdu",
+                ],
+              },
+              Baltic: ["Latvian", "Lithuanian"],
+              Slavic: {
+                "East Slavic": ["Russian", "Belarusian", "Ukrainian"],
+                "South Slavic": [
+                  "Bulgarian",
+                  "Slovenian",
+                  "Serbo-Croatian",
+                  "Macedonian",
+                ],
+                "West Slavic": ["Polish", "Czech", "Slovak", "Sorbian"],
+              },
+            },
+          },
+          // the path output
+          path: "",
+          // if true, causes error to display in the output box
+          error: false,
+          errorIntro: "There seems to be a problem with your JSON.",
+          errorMessage: "",
+          // text for copy button
+          copy: "Copy",
+          // switch to tell reader to collapse all sub-objects
+          isResult: false,
+          result: "",
+          locked: false,
+          expandAll: false,
+        },
+        // initialize ace editor and load the reader
+        mounted: function () {
+          this.editor = ace.edit("editor");
+          this.editor.setTheme("ace/theme/chrome");
+          this.editor.getSession().setMode("ace/mode/json");
+          this.editor.getSession().setTabSize(2);
+          this.editor.$blockScrolling = Infinity;
+          this.editor.setShowPrintMargin(false);
+          // auto-update reader on text change in editor
+          this.editor.getSession().on(
+            "change",
+            function (e) {
+              this.read();
+            }.bind(this)
+          );
+          this.editor.setValue(
+            vkbeautify.json(JSON.stringify(this.json), 2),
+            -1
+          );
+        },
+        methods: {
+          // grab JSON from editor, clear the path and update the reader
+          read: function (clearPath = true) {
+            try {
+              if (clearPath) this.path = "";
+              var newJson = JSON.parse(this.editor.getValue());
+              // collapse the reader view unless the user is editing the existing JSON in the editor:
+              // if the key at [0] of the previous JSON and the new JSON are the same, then the user is probably editing,
+              // rather than copy-pasting a new JSON object
+              //if (Object.keys(newJson)[0] !== Object.keys(this.json)[0])
+              this.close = !this.close;
+              this.json = newJson;
+              this.error = false;
+            } catch (e) {
+              // error handling for JSON.parse()
+              this.error = true;
+              this.errorMessage = e.message;
+            }
+          },
+          // load the sample in the editor
+          loadSample: function () {
+            this.editor.setValue(
+              vkbeautify.json(JSON.stringify(this.sample), 2),
+              1
+            );
+          },
+          // update the path and reset the "Copy" button when a json key is clicked
+          updatePath: function (newPath) {
+            //console.log(newPath);
+            this.path = newPath;
+            this.copy = "Copy";
+          },
+          copied: function () {
+            this.copy = "Copied";
+          },
+          beautify: function () {
+            this.editor.setValue(vkbeautify.json(this.editor.getValue()), 1);
+          },
+          minify: function () {
+            this.editor.setValue(vkbeautify.jsonmin(this.editor.getValue()), 1);
+          },
+          reset: function () {
+            this.locked = false;
+            app.isResult = false;
+          },
+          expand: function () {
+            this.expandAll = !this.expandAll;
+          },
+        },
+      });
+
+      document
+        .getElementById("reader-path-bar-input")
+        .addEventListener("input", inputChangedHandler);
+      function inputChangedHandler(sender) {
+        var result = evaluatePath(sender);
+        app.test = result;
+        console.log(result);
+        scrollIntoView(result);
+      }
+      function evaluatePath(sender) {
+        app.locked = true;
+        //var json = JSON.parse(app.editor.getValue());
+        result = jsonPath(app.json, sender.target.value.trim());
+        if (result.length == 1 && typeof result[0] !== "string")
+          app.result = result[0];
+        else app.result = result;
+        app.isResult = true;
+        app.error = false;
+        return result[0];
+      }
+      function scrollIntoView(searchObject) {
+        app.editor.find(searchObject, {
+          backwards: false,
+          wrap: true,
+          caseSensitive: false,
+          wholeWord: false,
+          regExp: false,
+        });
+      }
+    </script>
+  </body>
+</html>

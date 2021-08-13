@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="description" content="JSON Path Finder" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JSON Path Finder</title>
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico" />
+    <link href="css.css?family=Roboto+Mono|Roboto:300,400" rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="ajax/libs/normalize/7.0.0/normalize.min.css"
+    />
+    <link rel="stylesheet" href="css/style.20210306.css" />
+    <script type="text/javascript" src="vue@2.6.14/dist/vue.min.js"></script>
+    <script
+      type="text/javascript"
+      src="Inndy/vue-clipboard2/master/dist/vue-clipboard.min.js"
+    ></script>
+    <script src="ace/ace.js" type="text/javascript" charset="utf-8"></script>
+    <script src="jsonpath-0.8.0.js" type="text/javascript"></script>
+    <script src="vkiryukhin/vkBeautify/master/vkbeautify.js"></script>
+  </head>
+
+  <body>
+    <!-- main vue app -->
+    <div id="app">
+      <!-- title bar -->
+      <div id="title-bar">
+        <div>
+          <h2 class="title-bar-item">JSON Path Finder & Evaluator</h2>
+        </div>
+        <div class="title-bar-item">
+          <a
+            href="https://github.com/joebeachjoebeach/json-path-finder"
+            target="_blank"
+            ><img
+              src="images/github-light.png"
+              alt="find this project on github"
+          /></a>
+        </div>
+      </div>
+      <div style="height: 200px">
+        <button @click="change">{{content}}</button>
+        <!-- json tree display -->
+        <parent is-visible="false" :count1="count"> </parent>
+      </div>
+    </div>
+
+    <script type="x-template" id="parent">
+      <div>
+        <button>{{count1}}</button>
+          <child v-if="isVisible" :count2="count1">
+          </child>
+      </div>
+    </script>
+
+    <script>
+      Vue.component("parent", {
+        props: ["isVisible", "count1"],
+        data: function () {
+          return {
+            visible: this.isVisible,
+          };
+        },
+        template: "#parent",
+      });
+
+      Vue.component("child", {
+        props: ["isVisible", "count2"],
+        data: function () {
+          return {
+            visible: false,
+          };
+        },
+        template: "<button v-on:click='count2++'>{{count2}}</button>",
+      });
+
+      var app = new Vue({
+        el: "#app",
+        data: {
+          count: 40,
+          content: "AAA",
+        },
+        methods: {
+          change: function () {
+            this.count = 100;
+            this.content = "BBB";
+          },
+        },
+      });
+    </script>
+  </body>
+</html>

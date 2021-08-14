@@ -97,14 +97,12 @@
               class="invisiableBtn"
               @click="reset"
             >
-              <img
-                src="https://img.icons8.com/android/24/000000/recurring-appointment.png"
-              />
+              <img src="https://img.icons8.com/fluency/24/000000/return.png" />
             </button>
             <button
               id="expand-button"
               class="invisiableBtn"
-              title="点击开启一键展开折叠"
+              title="全部展开(收起)"
               @click="expand"
             >
               <img
@@ -132,7 +130,7 @@
                   :root="true"
                   :original-json="result"
                   :parent-json="result"
-                  :expand-all="true"
+                  :expand-all="expandAll"
                 >
                 </json-tree>
               </div>
@@ -171,12 +169,12 @@
     <script type="x-template" id="json-tree">
       <div :class="{ 'json-reader-tree-subtree':!root, 'json-reader-tree-root':root}" class="json-reader-tree">
           <div class="json-reader-tree-property" :class="{ 'json-reader-tree-property-selected': selected }" @click="clicked">
-              <div v-if="isArrOrObj && (isOpen || expand)" class="json-reader-tree-property-arrow">&#9660; </div>
-              <div v-if="isArrOrObj && !isOpen && !expand" class="json-reader-tree-property-arrow">&#9654; </div>
+              <div v-if="isArrOrObj && (isOpen || expandAll)" class="json-reader-tree-property-arrow">&#9660; </div>
+              <div v-if="isArrOrObj && !isOpen && !expandAll" class="json-reader-tree-property-arrow">&#9654; </div>
               <div>{{ keyName }}:</div>
               <div v-if="!isArrOrObj" class="json-reader-tree-property-value">{{ item }}</div>
           </div>
-          <div v-show="isOpen || expand" v-if="isArrOrObj">
+          <div v-show="isOpen || expandAll" v-if="isArrOrObj">
             <div v-for="(childItem, key) in item">
                 <json-tree :item="childItem" :key-name="key" :root="false"
                  :original-json="originalJson" :parent-json ="item" :expand-all="expandAll" @update="sendUpdate">
@@ -216,19 +214,28 @@
             isOpen: false,
             selected: false,
             justClicked: false,
-            expand: this.expandAll,
+            // expand: this.expandAll,
           };
         },
         computed: {
           isArrOrObj: function () {
             return this.item instanceof Object;
           },
+          expand: {
+            get: function () {
+              return this.expandAll;
+            },
+            set: function (newValue) {
+              this.expandAll = newValue;
+            },
+          },
         },
 
         methods: {
           clicked: function () {
-            if (this.isArrOrObj && !app.isResult) this.isOpen = !this.isOpen;
-            if (app.isResult) this.expand = !this.expand;
+            if (app.expandAll) app.expandAll = !app.expandAll;
+            if (this.isArrOrObj) this.isOpen = !this.isOpen;
+            //if (this.isArrOrObj && app.isResult) this.expandAll = !this.expandAll;
             this.selected = true;
             eventHub.$emit("other-clicked");
             this.justClicked = true;
@@ -380,7 +387,7 @@
               // if the key at [0] of the previous JSON and the new JSON are the same, then the user is probably editing,
               // rather than copy-pasting a new JSON object
               //if (Object.keys(newJson)[0] !== Object.keys(this.json)[0])
-              this.close = !this.close;
+              //this.close = !this.close;
               this.json = newJson;
               this.error = false;
             } catch (e) {
@@ -426,9 +433,17 @@
         .addEventListener("input", inputChangedHandler);
       function inputChangedHandler(sender) {
         var result = evaluatePath(sender);
-        app.test = result;
-        console.log(result);
-        scrollIntoView(result);
+        if (typeof result === "string") {
+          scrollIntoView(escapeRegExp(result));
+        } else {
+          //console.log(result);
+          result = escapeRegExp(vkbeautify.json(result))
+            .replaceAll(/\n\s*/g, "\n\\s*")
+            .replaceAll(/"/g, '\\"');
+          //app.test = result;
+          //console.log(result);
+          scrollIntoView(result);
+        }
       }
       function evaluatePath(sender) {
         app.locked = true;
@@ -447,8 +462,11 @@
           wrap: true,
           caseSensitive: false,
           wholeWord: false,
-          regExp: false,
+          regExp: true,
         });
+      }
+      function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
       }
     </script>
   </body>

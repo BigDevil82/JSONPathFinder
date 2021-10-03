@@ -383,6 +383,7 @@
             try {
               if (clearPath) this.path = "";
               var newJson = JSON.parse(this.editor.getValue());
+              this.reset();
               // collapse the reader view unless the user is editing the existing JSON in the editor:
               // if the key at [0] of the previous JSON and the new JSON are the same, then the user is probably editing,
               // rather than copy-pasting a new JSON object
@@ -420,7 +421,7 @@
           },
           reset: function () {
             this.locked = false;
-            app.isResult = false;
+            this.isResult = false;
           },
           expand: function () {
             this.expandAll = !this.expandAll;

@@ -9,9 +9,9 @@
 *.user
 *.userosscache
 *.sln.docstates
-*.mp4
-vueTest.html
-original.html
+src/*.mp4
+src/vueTest.html
+src/original.html
 Releases/
 
 # User-specific files (MonoDevelop/Xamarin Studio)

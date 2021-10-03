@@ -18,7 +18,7 @@
 
    可以点击JSON树右上角reset按钮（鼠标悬浮时显示），回到开始内容
 
-  ![image](https://user-images.githubusercontent.com/63774114/129373433-dfe2a0c6-a6f3-480c-b63e-6891ba15ae82.png)
+  ![image](https://user-images.githubusercontent.com/63774114/135744033-e68d80b3-411d-43f5-9fd3-2629ef1f59de.png)
 
 3. 上图中的向下箭头用于一键展开JSON树，再次点击返回原先状态
 
